@@ -11,6 +11,7 @@ ARG TARGETPLATFORM
 ARG BUILD_VERSION
 ARG BUILD_COMMIT
 ARG BUILD_DATE
+ARG CERTBOT_PLUGINS=""
 
 # See: https://github.com/just-containers/s6-overlay/blob/master/README.md
 ENV SUPPRESS_NO_CONFIG_WARNING=1 \
@@ -49,6 +50,14 @@ RUN ln -s NginxProxyManager.crt 1d0e3f10.0 && update-ca-certificates
 WORKDIR /app
 RUN yarn install \
 	&& yarn cache clean
+
+# Optionally bake DNS challenge providers into the image so startup does not
+# depend on PyPI being available. This remains opt-in for upstream-compatible
+# local builds.
+RUN if [ -n "${CERTBOT_PLUGINS}" ]; then \
+		. /usr/bin/common.sh; \
+		/app/scripts/install-certbot-plugins ${CERTBOT_PLUGINS}; \
+	fi
 
 # Remove frontend service not required for prod, dev nginx config as well
 RUN rm -rf /etc/s6-overlay/s6-rc.d/user/contents.d/frontend /etc/nginx/conf.d/dev.conf \
