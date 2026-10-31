@@ -16,6 +16,19 @@ import { streamPortBindings } from "../lib/stream-ports.js";
 const modulePath = "/usr/lib/nginx/modules/ngx_stream_module.so";
 const available = process.platform === "linux" && existsSync(modulePath) && spawnSync("nginx", ["-v"]).status === 0;
 
+const canConnect = (port) =>
+	new Promise((resolve) => {
+		const socket = net.connect(port, "127.0.0.1");
+		const finish = (connected) => {
+			socket.removeAllListeners();
+			socket.destroy();
+			resolve(connected);
+		};
+		socket.once("connect", () => finish(true));
+		socket.once("error", () => finish(false));
+		socket.setTimeout(100, () => finish(false));
+	});
+
 test("live Nginx forwards both ends of translated and fixed-port ranges over TCP and UDP", {
 	skip: available ? false : "Requires Linux nginx and libnginx-mod-stream",
 	timeout: 20000,
@@ -73,6 +86,12 @@ stream { log_format stream '$remote_addr $server_port'; ${servers} }
 		nginx = spawn("nginx", ["-p", `${dir}/`, "-c", config, "-g", "daemon off;"], { stdio: "ignore" });
 		for (let retry = 0; retry < 100 && !existsSync(path.join(dir, "nginx.pid")); retry++) await delay(25);
 		assert.ok(existsSync(path.join(dir, "nginx.pid")), "Nginx started");
+		let listening = false;
+		for (let retry = 0; retry < 100 && !listening; retry++) {
+			listening = await canConnect(incoming);
+			if (!listening) await delay(25);
+		}
+		assert.ok(listening, "Nginx listener became ready");
 		for (let offset = 0; offset < 4; offset++) {
 			const expected = `${offset < 2 ? offset : 0}:hello`;
 			const tcp = net.connect(incoming + offset, "127.0.0.1");
