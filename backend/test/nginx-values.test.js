@@ -417,6 +417,7 @@ describe("rendered templates", () => {
 		enabled: true,
 		id: 1,
 		incoming_port: 9000,
+		port_bindings: [{ incoming_port: 9000, forwarding_port: 80 }],
 		forwarding_host: v,
 		forwarding_port: 80,
 		tcp_forwarding: true,
