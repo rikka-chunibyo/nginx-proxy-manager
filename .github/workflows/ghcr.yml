@@ -16,6 +16,10 @@ concurrency:
 
 env:
   IMAGE_NAME: ghcr.io/${{ github.repository }}
+  # Use the Nginx Proxy Manager CI image with the full Nginx 1.31.9 backport
+  # (docker-nginx-full#45) until the stable base includes those fixes.
+  BASE_IMAGE_NAME: docker.io/nginxproxymanager/nginx-full:github-pr-45-certbot-node
+  BASE_IMAGE_DIGEST: sha256:653a58b7e3d7b371772bb3d78d0ad83e07ce2219c25eb75cf2c5b7d3bb38b442
 
 jobs:
   image:
@@ -87,8 +91,8 @@ jobs:
             org.opencontainers.image.title=Nginx Proxy Manager with stream port ranges
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.base.name=docker.io/nginxproxymanager/nginx-full:certbot-node
-            org.opencontainers.image.base.digest=sha256:393d1775030418ff51633a866b85640bdcc95cefcc571ecbd368e7ca5a669b16
+            org.opencontainers.image.base.name=${{ env.BASE_IMAGE_NAME }}
+            org.opencontainers.image.base.digest=${{ env.BASE_IMAGE_DIGEST }}
 
       - name: Build and publish image
         uses: docker/build-push-action@v7
@@ -101,7 +105,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            BASE_IMAGE=nginxproxymanager/nginx-full:certbot-node@sha256:393d1775030418ff51633a866b85640bdcc95cefcc571ecbd368e7ca5a669b16
+            BASE_IMAGE=${{ env.BASE_IMAGE_NAME }}@${{ env.BASE_IMAGE_DIGEST }}
             BUILD_VERSION=2.17.1-stream-ranges
             BUILD_COMMIT=${{ github.sha }}
             BUILD_DATE=${{ steps.build.outputs.date }}
